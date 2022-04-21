@@ -52,7 +52,7 @@ def get_contours(name, img, img_contour, img_gray, img_blur, img_canny, img_dila
                                       [img_canny, img_contour, img_dilated]))
     cv2.imshow("Stack", img_stack)
 
-# gs = grayscale
+# gs = grayscale, actually is black/white
 # final directory must already exist
 def process(gs=True):
     for filename in os.listdir(DIRECTORY):
