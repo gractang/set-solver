@@ -7,7 +7,7 @@ import numpy as np
 def is_set(c1, c2, c3):
     # checks whether x is same or different
     # if mod 3 = 0, then python interprets as false. not --> turn to true
-
+    # n = num, c = color, f = fill, s = shape
     n_sd = not ((int(c1[0]) + int(c2[0]) + int(c3[0])) % 3)
     c_sd = not ((int(c1[1]) + int(c2[1]) + int(c3[1])) % 3)
     f_sd = not ((int(c1[2]) + int(c2[2]) + int(c3[2])) % 3)
@@ -25,12 +25,13 @@ def solve(board):
                 c1 = board[first_card]
                 c2 = board[second_card]
                 c3 = board[third_card]
+
                 if is_set(c1, c2, c3):
                     sets.add((c1, c2, c3))
     return sets
 
 
-# converts sets of numbers into words
+# converts sets of numbers into words (ex 0000 --> 1 red solid oval)
 def convert_sets(sets):
     new = set()
     for s in sets:
@@ -38,17 +39,17 @@ def convert_sets(sets):
     return new
 
 
+# draws the sets out by stacking rows of three
 def draw_sets(imgs, sets):
     stacks = []
     for s in sets:
         ims = [imgs[s[0]], imgs[s[1]], imgs[s[2]]]
         stacks.append(ims)
-        # print("here")
     mega_stack = ref.stack_images(.7, stacks)
-
     cv2.imshow("sets!", mega_stack)
 
 
+# returns an array that contains the values in a dictionary
 def get_vals(dict):
     arr = []
     for pair in dict:
@@ -59,9 +60,8 @@ def get_vals(dict):
 def run():
     shapes = ref.load_shapes("shape/")
     image = cv2.imread("test/IMG_0554.JPG")
-    imgs, names, output = ref.isolate(image, shapes)
+    imgs, names, output = ref.retrieve(image, shapes)
     num_cards = len(imgs)
-    #print(num_cards)
     print(names)
     sets = solve(names)
     print(sets)
@@ -71,7 +71,6 @@ def run():
     cv2.imshow("output", output)
     draw_sets(imgs, sets)
     cv2.waitKey(0)
-
 
 
 run()
