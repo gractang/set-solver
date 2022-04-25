@@ -83,6 +83,8 @@ def name_from_id(id):
 #  [[2111  974]]
 #
 #  [[2158   87]]]
+# where each element is [[xn yn]]
+# so xn is pts[n][0][1]
 def format_points(pts):
     # if incorrect input, return
     if len(pts) != 4:
@@ -93,6 +95,8 @@ def format_points(pts):
     right_top = [0,0]
     x_sum = 0
     y_sum = 0
+
+    # find averages of all x and y points (i.e. midpoint of rectangle)
     for pt in pts:
         x_sum += pt[0][0]
         y_sum += pt[0][1]
@@ -111,7 +115,6 @@ def format_points(pts):
             else:
                 right_bottom = pt
     return [left_top, left_bottom, right_bottom, right_top]
-
 
 # warps image (pts1 --> pts2)
 def warp(img, pts1, pts2, width, height):
