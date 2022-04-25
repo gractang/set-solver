@@ -3,34 +3,42 @@ import numpy as np
 import os
 
 
-# card dimensions: 2.25 x 3.5 in
-
 WAIT_TIME = 1500
 
+# all possible shape formats
 SHAPES = ["0__0", "0__1", "0__2", "1__0", "1__1", "1__2", "2__0", "2__1", "2__2"]
 IMG_TYPE = "jpg"
 
+# assigns values for each number, color, fill, and shape
 NUM_DICT = {0: "1", 1: "2", 2: "3"}
 COLOR_DICT = {0: "red", 1: "green", 2: "purple"}
 FILL_DICT = {0: "solid", 1: "striped", 2: "empty"}
 SHAPE_DICT = {0: "oval", 1: "diamond", 2: "squiggle"}
 
+# threshold for canny
 CANNY_THRESH = 50
 THRESH_C = 70
 
+# min and max area for something to be considered a card
 CARD_MAX_AREA = 120000
 CARD_MIN_AREA = 5000
+
+# width and height for card to be scaled to
+# actual card dimensions: 2.25 x 3.5 in
 CARD_WIDTH = 225
 CARD_HEIGHT = 350
 
+# for visualization purposes
 FONT_SIZE = 2
+
+# when fill is unknown, use default
 DEFAULT_FILL = 0
 
+# range values for red, green, and purple as determined by hand using color.py
 RED_VALS = [0, 49, 64, 255, 212, 255]
 GREEN_VALS = [50, 89, 70, 255, 56, 255]
 PURPLE_VALS = [90, 179, 12, 255, 82, 255]
 VALS_DICT = {0:RED_VALS, 1:GREEN_VALS, 2:PURPLE_VALS}
-
 
 
 # idk why i did this. this is the same as the shape class lol
@@ -61,13 +69,22 @@ def show_wait(img_name, img, time):
     cv2.waitKey(time)
 
 
-# gets name from number id (id as string)
+# gets name from number id (id as string like 0000)
 def name_from_id(id):
     return NUM_DICT[int(id[0])] + " " + COLOR_DICT[int(id[1])] + " " + FILL_DICT[int(id[2])] + " " + SHAPE_DICT[int(id[3])]
 
 
-# cannot be bothered to think. pts assumed to be 2d array [4][2]
+# pts is (or should be) an np.ndarray of size 4x1x2
+# like so
+# [[[1597   65]]
+#
+#  [[1552  946]]
+#
+#  [[2111  974]]
+#
+#  [[2158   87]]]
 def format_points(pts):
+    # if incorrect input, return
     if len(pts) != 4:
         return
     left_top = [0,0]
@@ -81,6 +98,7 @@ def format_points(pts):
         y_sum += pt[0][1]
     x_avg = x_sum // 4
     y_avg = y_sum // 4
+
     for pt in pts:
         if pt[0][0] <= x_avg:
             if pt[0][1] <= y_avg:
@@ -107,16 +125,23 @@ def empty(dummy):
     print(dummy)
 
 
-# stacks images in img_array
+# stacks images in img_array (2-d array of images), scaling by scale value
 def stack_images(scale, img_array):
     rows = len(img_array)
+
+    # if asked to stack nothing, return default black image
     if rows == 0:
         return cv2.imread("reference/black.jpg")
     cols = len(img_array[0])
-    rowsAvailable = isinstance(img_array[0], list)
+
+    # checks to make sure that img_array does actually contain rows in a list format
+    rows_available = isinstance(img_array[0], list)
+
+    # get width and height of each image (assumed to be identical?)
     width = img_array[0][0].shape[1]
     height = img_array[0][0].shape[0]
-    if rowsAvailable:
+
+    if rows_available:
         for x in range(0, rows):
             for y in range(0, cols):
                 if img_array[x][y].shape[:2] == img_array[0][0].shape[:2]:
@@ -125,25 +150,28 @@ def stack_images(scale, img_array):
                     img_array[x][y] = cv2.resize(img_array[x][y], (img_array[0][0].shape[1], img_array[0][0].shape[0]),
                                                  None, scale, scale)
                 if len(img_array[x][y].shape) == 2: img_array[x][y] = cv2.cvtColor(img_array[x][y], cv2.COLOR_GRAY2BGR)
-        imageBlank = np.zeros((height, width, 3), np.uint8)
-        hor = [imageBlank] * rows
-        hor_con = [imageBlank] * rows
+        image_blank = np.zeros((height, width, 3), np.uint8)
+        hor = [image_blank] * rows
+        # hor_con = [image_blank] * rows
         for x in range(0, rows):
             hor[x] = np.hstack(img_array[x])
         ver = np.vstack(hor)
+
+    # i guess if there's only one row? i.e. img_array is 1d
     else:
         for x in range(0, rows):
             if img_array[x].shape[:2] == img_array[0].shape[:2]:
                 img_array[x] = cv2.resize(img_array[x], (0, 0), None, scale, scale)
             else:
                 img_array[x] = cv2.resize(img_array[x], (img_array[0].shape[1], img_array[0].shape[0]), None, scale, scale)
-            if len(img_array[x].shape) == 2: img_array[x] = cv2.cvtColor(img_array[x], cv2.COLOR_GRAY2BGR)
+            if len(img_array[x].shape) == 2:
+                img_array[x] = cv2.cvtColor(img_array[x], cv2.COLOR_GRAY2BGR)
         hor = np.hstack(img_array)
         ver = hor
     return ver
 
 
-# returns color id
+# returns color id of given card object
 def match_color(card):
     image = card.img
     img_results = []
@@ -224,7 +252,7 @@ def load_shapes(dir_in):
 # returns list of isolated images,
 # the names of those images (in id form),
 # and the drawn-over image
-def isolate(img, shapes):
+def retrieve(img, shapes):
     img_contour = img.copy()
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_blur = cv2.GaussianBlur(img_gray, (17, 17), 5)
@@ -246,11 +274,10 @@ def isolate(img, shapes):
             peri = cv2.arcLength(cnt, True)
             # print(peri)
             approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
-            # print(approx)
 
             num_corners = len(approx)
             x, y, w, h = cv2.boundingRect(approx)
-            name = "idkyet"
+            name = ""
             if num_corners == 4:
                 # do card identification & warping
                 width, height = CARD_WIDTH, CARD_HEIGHT
