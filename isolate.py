@@ -8,6 +8,7 @@ import os
 DIRECTORY = "img"
 FIN_DIR = "all"
 
+
 def get_contours(name, img, img_contour, img_gray, img_blur, img_canny, img_dilated, gs):
     # contours, hierarchy = cv2.findContours(img_canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours, hierarchy = cv2.findContours(img_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -52,6 +53,7 @@ def get_contours(name, img, img_contour, img_gray, img_blur, img_canny, img_dila
                                       [img_canny, img_contour, img_dilated]))
     cv2.imshow("Stack", img_stack)
 
+
 # gs = grayscale, actually is black/white
 # final directory must already exist
 def process(gs=True):
@@ -69,7 +71,6 @@ def process(gs=True):
                                               [img_canny, img_contour, img_dilated]))
             cv2.imshow("Stack", img_stack)
             cv2.waitKey(1000)
-
 
 
 process()
