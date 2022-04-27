@@ -59,7 +59,7 @@ def get_vals(dict):
 
 def run():
     shapes = ref.load_shapes("shape/")
-    image = cv2.imread("test/IMG_0554.JPG")
+    image = cv2.imread("test/IMG_3653.JPG")
     imgs, names, output = ref.retrieve(image, shapes)
     num_cards = len(imgs)
     print(names)
@@ -73,4 +73,5 @@ def run():
     cv2.waitKey(0)
 
 
-run()
+if __name__ == '__main__':
+    run()

@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 
-WAIT_TIME = 1500
+WAIT_TIME = 5000
 
 # all possible shape formats
 SHAPES = ["0__0", "0__1", "0__2", "1__0", "1__1", "1__2", "2__0", "2__1", "2__2"]
@@ -115,6 +115,7 @@ def format_points(pts):
             else:
                 right_bottom = pt
     return [left_top, left_bottom, right_bottom, right_top]
+
 
 # warps image (pts1 --> pts2)
 def warp(img, pts1, pts2, width, height):
@@ -259,11 +260,10 @@ def retrieve(img, shapes):
     img_contour = img.copy()
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_blur = cv2.GaussianBlur(img_gray, (17, 17), 5)
-    img_w, img_h = np.shape(img)[:2]
-    bkg_level = img_gray[int(1)][int(1)]
+    bkg_level = img_gray[int(5)][int(5)]
     thresh_level = bkg_level + THRESH_C
     retval, img_bw = cv2.threshold(img_blur, thresh_level, 255, cv2.THRESH_BINARY)
-    img_canny = cv2.Canny(img_bw, CANNY_THRESH, CANNY_THRESH)
+    img_canny = cv2.Canny(img_bw, CANNY_THRESH, CANNY_THRESH/2)
     img_dilated = cv2.dilate(img_canny, kernel=np.ones((5, 5), np.uint8), iterations=2)
     contours, hierarchy = cv2.findContours(img_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     img_stack = stack_images(1, ([img, img_gray, img_blur],
@@ -273,7 +273,8 @@ def retrieve(img, shapes):
     for cnt in contours:
         area = cv2.contourArea(cnt)
         if area > CARD_MIN_AREA:
-            cv2.drawContours(img_contour, cnt, -1, (0, 0, 255), 10)
+            # draw onto img_contour, all the contours, draw all (-1), draw in red (0,0,255), line thickness 10
+            cv2.drawContours(img_contour, cnt, -1, (0, 0, 255), 5)
             peri = cv2.arcLength(cnt, True)
             # print(peri)
             approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
@@ -295,18 +296,20 @@ def retrieve(img, shapes):
                 card.img = warped
                 name = match(card, shapes)
                 card.name = name
-                # print(name)
                 names.append(name)
                 card_imgs[name] = card.img
                 # card_imgs.append(card.img)
+
+                cv2.rectangle(img_contour, (x, y), (x + w, y + h), (0, 255, 0), 3)
+                print("name:", name)
+                cv2.putText(img_contour, name_from_id(name),
+                            (x + (w // 20), y + (h // 2) - 10), cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE,
+                            (0, 0, 0), 5)
             else:
                 obj_type = ""
 
-            cv2.rectangle(img_contour, (x, y), (x + w, y + h), (0, 255, 0), 3)
-            cv2.putText(img_contour, name_from_id(name),
-                        (x + (w//20), y + (h // 2) - 10), cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE,
-                        (0, 0, 0), 5)
 
-    # cv2.imshow("Stack", img_stack)
-    # cv2.waitKey(WAIT_TIME)
+
+    cv2.imshow("Stack", img_stack)
+    cv2.waitKey(WAIT_TIME)
     return card_imgs, names, img_contour
