@@ -16,7 +16,7 @@ FILL_DICT = {0: "solid", 1: "striped", 2: "empty"}
 SHAPE_DICT = {0: "oval", 1: "diamond", 2: "squiggle"}
 
 # threshold for canny
-CANNY_THRESH = 50
+CANNY_THRESH = 10
 THRESH_C = 70
 
 # min and max area for something to be considered a card
@@ -260,7 +260,7 @@ def retrieve(img, shapes):
     img_contour = img.copy()
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_blur = cv2.GaussianBlur(img_gray, (17, 17), 5)
-    bkg_level = img_gray[int(5)][int(5)]
+    bkg_level = img_blur[int(5)][int(5)]
     thresh_level = bkg_level + THRESH_C
     retval, img_bw = cv2.threshold(img_blur, thresh_level, 255, cv2.THRESH_BINARY)
     img_canny = cv2.Canny(img_bw, CANNY_THRESH, CANNY_THRESH/2)

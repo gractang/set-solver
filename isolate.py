@@ -5,7 +5,7 @@ import numpy as np
 import reference as ref
 import os
 
-DIRECTORY = "img"
+DIRECTORY = "img/empty"
 FIN_DIR = "all"
 
 
