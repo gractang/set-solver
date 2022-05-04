@@ -16,7 +16,7 @@ FILL_DICT = {0: "solid", 1: "striped", 2: "empty"}
 SHAPE_DICT = {0: "oval", 1: "diamond", 2: "squiggle"}
 
 # threshold for canny
-CANNY_THRESH = 10
+CANNY_THRESH = 50
 THRESH_C = 70
 
 # min and max area for something to be considered a card
@@ -220,7 +220,7 @@ def match(card, shapes):
             # print(len(card.img.shape))
             # print(len(shape.img.shape))
             img_gray = cv2.cvtColor(card.img, cv2.COLOR_BGR2GRAY)
-            img_blur = cv2.GaussianBlur(img_gray, (7, 7), 5)
+            img_blur = cv2.GaussianBlur(img_gray, (17, 17), 5)
             bkg_level = img_gray[10][10]
             # print(bkg_level)
             thresh_level = bkg_level-30
@@ -259,15 +259,31 @@ def load_shapes(dir_in):
 def retrieve(img, shapes):
     img_contour = img.copy()
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_blur = cv2.GaussianBlur(img_gray, (17, 17), 5)
+    img_blur = cv2.GaussianBlur(img_gray, (7, 7), 5)
     bkg_level = img_blur[int(5)][int(5)]
     thresh_level = bkg_level + THRESH_C
     retval, img_bw = cv2.threshold(img_blur, thresh_level, 255, cv2.THRESH_BINARY)
+
+    # img_bw = cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 71, 2)
+    # img_bw_blur = cv2.medianBlur(img_bw, 7)
+
     img_canny = cv2.Canny(img_bw, CANNY_THRESH, CANNY_THRESH/2)
     img_dilated = cv2.dilate(img_canny, kernel=np.ones((5, 5), np.uint8), iterations=2)
+
+    # img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # img_canny = cv2.Canny(img_gray, 150, 200, apertureSize=3)
+    # cv2.imwrite("Canny.png", img_canny)
+    # element = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 3), (-1, -1))
+    # img_dilated = cv2.dilate(img_canny, element)
+    # cv2.imwrite("Eroded.png", img_dilated)
+
+
     contours, hierarchy = cv2.findContours(img_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     img_stack = stack_images(1, ([img, img_gray, img_blur],
                                       [img_bw, img_contour, img_dilated]))
+
+    # img_stack = stack_images(1, ([img, img_gray, img],
+    #                                    [img_canny, img_contour, img_dilated]))
     card_imgs = {}
     names = []
     for cnt in contours:
@@ -307,8 +323,6 @@ def retrieve(img, shapes):
                             (0, 0, 0), 5)
             else:
                 obj_type = ""
-
-
 
     cv2.imshow("Stack", img_stack)
     cv2.waitKey(WAIT_TIME)

@@ -6,7 +6,7 @@ import reference as ref
 import os
 
 DIRECTORY = "img/empty"
-FIN_DIR = "all"
+FIN_DIR = "test/solid"
 
 
 def get_contours(name, img, img_contour, img_gray, img_blur, img_canny, img_dilated, gs):
