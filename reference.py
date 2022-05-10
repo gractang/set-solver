@@ -277,7 +277,6 @@ def retrieve(img, shapes):
     # img_dilated = cv2.dilate(img_canny, element)
     # cv2.imwrite("Eroded.png", img_dilated)
 
-
     contours, hierarchy = cv2.findContours(img_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     img_stack = stack_images(1, ([img, img_gray, img_blur],
                                       [img_bw, img_contour, img_dilated]))

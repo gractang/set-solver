@@ -4,8 +4,8 @@ import reference as ref
 import finder as find
 import os
 
-IN_DIR = "img/solid"
-FIN_DIR = "test/solid"
+IN_DIR = "img/striped"
+FIN_DIR = "test/striped"
 
 
 def remove_shadow(img):
@@ -24,7 +24,7 @@ def remove_shadow(img):
 
     result = cv2.merge(result_planes)
     result_norm = cv2.merge(result_norm_planes)
-    cv2.imwrite('shadows_out_norm.jpg', result_norm)
+    # cv2.imwrite('shadows_out_norm.jpg', result_norm)
     return result_norm
     # cv2.imwrite('shadows_out.jpg', result)
     # cv2.imwrite('shadows_out_norm.jpg', result_norm)
@@ -65,26 +65,13 @@ def retrieve(img, shapes, img2):
     bkg_level = img_blur[int(5)][int(5)]
     thresh_level = bkg_level + ref.THRESH_C
     retval, img_bw = cv2.threshold(img_blur, thresh_level, 255, cv2.THRESH_BINARY)
-
-    # img_bw = cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 71, 2)
-    # img_bw_blur = cv2.medianBlur(img_bw, 7)
-
     img_canny = cv2.Canny(img_bw, ref.CANNY_THRESH, ref.CANNY_THRESH/2)
     img_dilated = cv2.dilate(img_canny, kernel=np.ones((5, 5), np.uint8), iterations=2)
-
-    # img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # img_canny = cv2.Canny(img_gray, 150, 200, apertureSize=3)
-    # cv2.imwrite("Canny.png", img_canny)
-    # element = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 3), (-1, -1))
-    # img_dilated = cv2.dilate(img_canny, element)
-    # cv2.imwrite("Eroded.png", img_dilated)
 
     contours, hierarchy = cv2.findContours(img_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     img_stack = ref.stack_images(1, ([img, img_gray, img_blur],
                                       [img_bw, img_contour, img_dilated]))
 
-    # img_stack = stack_images(1, ([img, img_gray, img],
-    #                                    [img_canny, img_contour, img_dilated]))
     card_imgs = {}
     names = []
     for cnt in contours:
@@ -129,6 +116,7 @@ def retrieve(img, shapes, img2):
     cv2.imshow("Stack", img_stack)
     cv2.waitKey(ref.WAIT_TIME)
     return card_imgs, names, img_contour
+
 
 def get_contours(name, img, img_contour, img_gray, img_blur, img_canny, img_dilated, gs):
     # contours, hierarchy = cv2.findContours(img_canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -176,6 +164,40 @@ def get_contours(name, img, img_contour, img_gray, img_blur, img_canny, img_dila
     cv2.imshow("Stack", img_stack)
 
 
+def match(card, shapes):
+    best_shape_match_diff = 100000
+    best_shape_name = "tbd"
+    name = "placeholder"
+    if len(card.img) != 0:
+        # Difference the query card shape from each shape image; store the result with the least difference
+        for shape in shapes:
+            # print(len(card.img.shape))
+            # print(len(shape.img.shape))
+            img_gray = cv2.cvtColor(card.img, cv2.COLOR_BGR2GRAY)
+            img_blur = cv2.GaussianBlur(img_gray, (17, 17), 5)
+            bkg_level = img_gray[10][10]
+            # print(bkg_level)
+            thresh_level = bkg_level-30
+            retval, img_bw = cv2.threshold(img_blur, thresh_level, 255, cv2.THRESH_BINARY)
+
+
+            # show_wait("cycle", img_bw, 25)
+
+            diff_img = cv2.absdiff(img_bw, shape.img)
+            shape_diff = int(np.sum(diff_img) / 255)
+            cv2.imshow(ref.stack_images(0.8, ([img_bw],
+                                              [diff_img])))
+            cv2.waitKey(5000)
+
+            if shape_diff < best_shape_match_diff:
+                best_shape_match_diff = shape_diff
+                #print("jello")
+                best_shape_name = shape.name[0] + "_0" + shape.name[3]
+                # print(best_shape_match_diff, best_shape_name)
+    return name
+
+# processes & isolates cards from images
+# shadow removed, inside fill "removed"
 def process(gs=True):
     for filename in os.listdir(IN_DIR):
         if filename.endswith("." + ref.IMG_TYPE):
@@ -186,15 +208,16 @@ def process(gs=True):
             img_contour = img.copy()
             #img_contour = remove_shadow(path)
             img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            img_blur = cv2.GaussianBlur(img_gray, (7, 7), 3)
+            img_blur = cv2.GaussianBlur(img_gray, (27, 27), 3)
             img_canny = cv2.Canny(img_blur, 50, 50)
             img_dilated = cv2.dilate(img_canny, kernel=np.ones((5, 5), np.uint8), iterations=2)
             #img = img_contour.copy()
+            # get_contours(filename, img, img_contour, img_gray, img_blur, img_canny, img_dilated, gs)
             get_contours(filename, img, img_contour, img_gray, img_blur, img_canny, img_dilated, gs)
             img_stack = ref.stack_images(0.8, ([img, img_gray, img_blur],
                                                [img_canny, img_contour, img_dilated]))
             cv2.imshow("Stack", img_stack)
-            cv2.waitKey(1000)
+            cv2.waitKey(3000)
 
 
 def run():
@@ -216,5 +239,7 @@ def run():
     cv2.waitKey(0)
 
 
+def matching():
+    card = ref.Card()
 # run()
-process(False)
+process()
