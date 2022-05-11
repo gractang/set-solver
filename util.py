@@ -6,7 +6,7 @@ import numpy as np
 # assigns values for each number, color, fill, and shape
 NUM_DICT = {0: "1", 1: "2", 2: "3"}
 COLOR_DICT = {0: "red", 1: "green", 2: "purple"}
-FILL_DICT = {0: "solid", 1: "striped", 2: "empty"}
+FILL_DICT = {0: "solid", 1: "empty", 2: "striped"}
 SHAPE_DICT = {0: "oval", 1: "diamond", 2: "squiggle"}
 
 # threshold for canny
@@ -17,13 +17,15 @@ THRESH_C = 70
 CARD_MAX_AREA = 120000
 CARD_MIN_AREA = 5000
 
+SHAPE_MIN_AREA = 5000
+
 # width and height for card to be scaled to
 # actual card dimensions: 2.25 x 3.5 in
 CARD_WIDTH = 225
 CARD_HEIGHT = 350
 
 # for visualization purposes
-FONT_SIZE = 2
+FONT_SIZE = 0.5
 
 # when fill is unknown, use default
 DEFAULT_FILL = 0
@@ -43,12 +45,21 @@ class Card:
         self.name = []
         self.img = []
 
+    def __init__(self, name_in, img_in):
+        self.name = name_in
+        self.img = img_in
+
 
 # shows image for time (ms)
 def show_wait(img_name, img, time):
     cv2.imshow(img_name, img)
     # waits (ms). 0 = forever
     cv2.waitKey(time)
+
+
+# gets name from number id (id as string like 0000)
+def name_from_id(id):
+    return NUM_DICT[int(id[0])] + " " + COLOR_DICT[int(id[1])] + " " + FILL_DICT[int(id[2])] + " " + SHAPE_DICT[int(id[3])]
 
 
 # pts is (or should be) an np.ndarray of size 4x1x2
@@ -182,7 +193,8 @@ def isolate_cards(img):
 
             num_corners = len(approx)
             x, y, w, h = cv2.boundingRect(approx)
-
+            print(w)
+            print(h)
             if num_corners == 4:
                 # do card identification & warping
                 width, height = CARD_WIDTH, CARD_HEIGHT
@@ -196,8 +208,8 @@ def isolate_cards(img):
             else:
                 obj_type = ""
 
-    cv2.imshow("Stack", img_stack)
-    cv2.waitKey(WAIT_TIME)
+    # cv2.imshow("Stack", img_stack)
+    # cv2.waitKey(WAIT_TIME)
 
     return card_imgs, img_contour
 
@@ -211,13 +223,13 @@ def remove_shadow(img):
     result_planes = []
     result_norm_planes = []
     for plane in rgb_planes:
-        dilated_img = cv2.dilate(plane, np.ones((11,11), np.uint8))
+        dilated_img = cv2.dilate(plane, np.ones((7,7), np.uint8))
         bg_img = cv2.medianBlur(dilated_img, 21)
         diff_img = 255 - cv2.absdiff(plane, bg_img)
         norm_img = cv2.normalize(diff_img,None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
         img_stack = [dilated_img, bg_img, diff_img, norm_img]
-        cv2.imshow("shdjkfl", np.hstack(img_stack))
-        cv2.waitKey(0)
+        # cv2.imshow("shdjkfl", np.hstack(img_stack))
+        # cv2.waitKey(0)
         result_planes.append(diff_img)
         result_norm_planes.append(norm_img)
 
@@ -272,24 +284,40 @@ def match_shape(card, shapes):
     if len(card.img) != 0:
         # Difference the query card shape from each shape image; store the result with the least difference
         for shape in shapes:
-            # print(len(card.img.shape))
-            # print(len(shape.img.shape))
             img_gray = cv2.cvtColor(card.img, cv2.COLOR_BGR2GRAY)
-            img_blur = cv2.GaussianBlur(img_gray, (17, 17), 5)
+            # img_blur = cv2.GaussianBlur(img_gray, (5, 5), 2)
             bkg_level = img_gray[10][10]
-            # print(bkg_level)
-            thresh_level = bkg_level - 30
-            retval, img_bw = cv2.threshold(img_blur, thresh_level, 255, cv2.THRESH_BINARY)
+            thresh_level = bkg_level-30
+            retval, img_bw = cv2.threshold(img_gray, thresh_level, 255, cv2.THRESH_BINARY)
+
+            # rms = remove_shadow(card.img)
+            # rms_gray = cv2.cvtColor(rms, cv2.COLOR_BGR2GRAY)
+            # retval, rms_bw = cv2.threshold(rms_gray, rms_gray[10][10] - 30, 255, cv2.THRESH_BINARY)
 
             # show_wait("cycle", img_bw, 25)
-
             diff_img = cv2.absdiff(img_bw, shape.img)
+            # diff_img = cv2.absdiff(rms_bw, shape.img)
             shape_diff = int(np.sum(diff_img) / 255)
             if shape_diff < best_shape_match_diff:
                 best_shape_match_diff = shape_diff
-                # print("jello")
-                best_shape_name = shape.name[0] + "_0" + shape.name[3]
-        # not done, continue work
+                best_shape_name = shape.name
+                # cv2.imshow("best", shape.img)
+                # cv2.imshow("card", rms_bw)
+                # cv2.waitKey(0)
+
+    return best_shape_name
+
+
+# loads shape into array of Shape objects
+def load_shapes(dir_in):
+    shapes = []
+    for filename in os.listdir(dir_in):
+        # print(os.path.join(DIRECTORY + "/", filename))
+        img = cv2.imread(dir_in + "/" + filename)
+        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        shapes.append(Card(filename[:4], img_gray))
+        print(filename[:4])
+    return shapes
 
 
 # only run once to generate the shapes to compare with
@@ -297,35 +325,95 @@ def generate_shapes(dir_in, dir_out):
     for filename in os.listdir(dir_in):
         print(os.path.join(dir_in + "/", filename))
         img = cv2.imread(dir_in + "/" + filename)
-        iso_card_img = isolate_cards(img)[0][0]
-        cv2.imshow("jsklf", iso_card_img)
-        cv2.waitKey(10)
-        img_gray = cv2.cvtColor(iso_card_img, cv2.COLOR_BGR2GRAY)
+        # iso_card_img = isolate_cards(img)[0][0]
+        # cv2.imshow("jsklf", iso_card_img)
+        # cv2.waitKey(10)
+        #img_gray = cv2.cvtColor(iso_card_img, cv2.COLOR_BGR2GRAY)
+        rms = remove_shadow(img)
+        img_gray = cv2.cvtColor(rms, cv2.COLOR_BGR2GRAY)
         retval, img_bw = cv2.threshold(img_gray, img_gray[10][10]-30, 255, cv2.THRESH_BINARY)
         show_wait("stack", np.hstack([img_gray, img_bw]), 10)
         cv2.imwrite(dir_out + "/" + filename, img_bw)
 
 
-def run():
-    # img = cv2.imread("test/IMG_3884.jpg")
-    # cards_imgs, img_contour = isolate_cards(img)
-    # cv2.imshow("contours", img_contour)
-    # cv2.waitKey(WAIT_TIME)
-    # cv2.imshow("Cards Isolated", np.hstack(cards_imgs))
-    #
-    # shadow_removed = []
-    # for card_img in cards_imgs:
-    #     shadow_removed.append(remove_shadow(card_img))
-    #
-    # cv2.imshow("Shadow Removed", np.hstack(shadow_removed))
-    # cv2.waitKey(0)
-    #
-    # for card_img in cards_imgs:
-    #     card = Card()
-    #     card.img = card_img
-    #     print(match_color(card))
+# also only runs once— crops every image in dir_in to just be
+# one single card
+def crop_imgs(dir_in):
+    for filename in os.listdir(dir_in):
+        img = cv2.imread(dir_in + "/" + filename)
+        cards_imgs, img_contour = isolate_cards(img)
+        cv2.imwrite(dir_in + "/" + filename, cards_imgs[0])
 
-    generate_shapes("test/shapes_imgs", "test/shapes")
+
+# combines matching shape and color
+# returns the card with the name corrected
+def match(card, shapes):
+    shape = match_shape(card, shapes)
+    color = match_color(card)
+    card.name = shape[0] + str(color) + shape[2:]
+    return card
+
+
+# retrieves the contours inside the card
+def contour_shape(card):
+    img = card.img
+    img_contour = img.copy()
+    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_blur = cv2.GaussianBlur(img_gray, (3, 3), 3)
+    # bkg_level = img_blur[int(15)][int(15)]
+    thresh_level = 127
+    retval, img_bw = cv2.threshold(img_blur, thresh_level, 255, cv2.THRESH_BINARY_INV)
+
+    img_canny = cv2.Canny(img_bw, CANNY_THRESH, CANNY_THRESH / 2)
+    img_dilated = cv2.dilate(img_canny, kernel=np.ones((5, 5), np.uint8), iterations=2)
+
+    contours, hierarchy = cv2.findContours(img_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    img_stack = stack_images(1, ([img, img_gray, img_blur],
+                                 [img_bw, img_contour, img_dilated]))
+    show_wait("stack", img_stack, 0)
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        print(area)
+        if area > SHAPE_MIN_AREA:
+            # draw onto img_contour, all the contours, draw all (-1), draw in red (0,0,255), line thickness 5
+            cv2.drawContours(img_contour, cnt, -1, (0, 0, 255), 5)
+            peri = cv2.arcLength(cnt, True)
+
+            # make an approximation of the four corner points
+            approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
+
+            num_corners = len(approx)
+            x, y, w, h = cv2.boundingRect(approx)
+            print('Width:', w)
+            print('Height:', w)
+            print('Box area:', w*h)
+            print('Fraction:', 1.0*area/(w*h))
+            cv2.rectangle(img_contour, (x, y), (x + w, y + h), (0, 255, 0), 3)
+
+    show_wait("cont", img_contour, 0)
+
+
+# identifies cards
+def card_id():
+    img = cv2.imread("test/IMG_0554.jpg")
+    shapes = load_shapes("test/shapes")
+    cards_imgs, img_contour = isolate_cards(img)
+    show_wait("contours", img_contour, 0)
+    id_cards_imgs = []
+    for card_img in cards_imgs:
+        card = Card("", card_img)
+        print("best shape:")
+        card = match(card, shapes)
+        print("name:", card.name)
+        cv2.putText(card.img, name_from_id(card.name), (10, 100), cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE,
+                    (0, 0, 0), 1)
+        id_cards_imgs.append(card.img)
+    show_wait("identified cards", np.hstack(id_cards_imgs), 0)
+
+
+def run():
+    return
 
 
 run()

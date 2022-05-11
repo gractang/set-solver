@@ -1,5 +1,8 @@
+# Grace Tang
+# May 10, 2022
+
 import cv2
-import reference as ref
+import util
 import numpy as np
 
 
@@ -16,6 +19,7 @@ def is_set(c1, c2, c3):
 
 
 # a lovely n^3 solution haha
+# solves "board," which is a list of card names
 def solve(board):
     num_cards = len(board)
     sets = set()  # lol look it's a set! hahahahah
@@ -35,7 +39,7 @@ def solve(board):
 def convert_sets(sets):
     new = set()
     for s in sets:
-        new.add((ref.name_from_id(s[0]), ref.name_from_id(s[1]), ref.name_from_id(s[2])))
+        new.add((util.name_from_id(s[0]), util.name_from_id(s[1]), util.name_from_id(s[2])))
     return new
 
 
@@ -45,8 +49,9 @@ def draw_sets(imgs, sets):
     for s in sets:
         ims = [imgs[s[0]], imgs[s[1]], imgs[s[2]]]
         stacks.append(ims)
-    mega_stack = ref.stack_images(.7, stacks)
+    mega_stack = util.stack_images(.7, stacks)
     cv2.imshow("sets!", mega_stack)
+    cv2.waitKey(0)
 
 
 # returns an array that contains the values in a dictionary
@@ -58,20 +63,31 @@ def get_vals(dict):
 
 
 def run():
-    shapes = ref.load_shapes("shape/")
-    image = cv2.imread("test/IMG_3667.jpg")
-    #image = cv2.imread("shadows_out.jpg")
-    imgs, names, output = ref.retrieve(image, shapes)
-    num_cards = len(imgs)
-    print(names)
+    img = cv2.imread("test/IMG_3886.jpg")
+    shapes = util.load_shapes("test/shapes")
+    cards_imgs, img_contour = util.isolate_cards(img)
+    util.show_wait("contours", img_contour, 0)
+    cards = {}
+    names = []
+    id_cards_imgs = []
+
+    for card_img in cards_imgs:
+        card = util.Card("", card_img)
+        print("best shape:")
+        card = util.match(card, shapes)
+        print("name:", card.name)
+        cv2.putText(card.img, util.name_from_id(card.name), (10, 100), cv2.FONT_HERSHEY_SIMPLEX, util.FONT_SIZE,
+                    (0, 0, 0), 1)
+        cards[card.name] = card.img
+        names.append(card.name)
+        id_cards_imgs.append(card.img)
+
+    util.show_wait("identified cards", np.hstack(id_cards_imgs), 0)
+
     sets = solve(names)
     print(sets)
     print(convert_sets(sets))
-    # stack = ref.stack_images(1, get_vals(imgs))
-    # cv2.imshow("processed", stack)
-    cv2.imshow("output", output)
-    draw_sets(imgs, sets)
-    cv2.waitKey(0)
+    draw_sets(cards, sets)
 
 
 if __name__ == '__main__':
