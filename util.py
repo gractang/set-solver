@@ -351,9 +351,10 @@ def crop_imgs(dir_in):
 # combines matching shape and color
 # returns the card with the name corrected
 def match(card, shapes):
-    shape = match_shape(card, shapes)
     color = match_color(card)
-    card.name = shape[0] + str(color) + shape[2:]
+    fill = match_fill(card)
+    shape = match_shape(card, shapes)
+    card.name = shape[0] + str(color) + str(fill) + shape[3]
     return card
 
 
@@ -420,6 +421,17 @@ def get_mean(img, contours):
     return gs_mean
 
 
+# matches the fill of the card where 0=filled, 1=empty, 2=striped
+def match_fill(card):
+    contours, img_contour = contour_shape(card)
+    mean = get_mean(card.img, contours)
+    if mean > STRIPED_MAX:
+        return 1
+    elif  mean > EMPTY_MAX:
+        return 2
+    else:
+        return 0
+
 
 # identifies cards
 def card_id():
@@ -443,10 +455,12 @@ def run():
     for filename in os.listdir("test/shapes_imgs"):
 
         card = Card("", cv2.imread("test/shapes_imgs/" + filename))
-        contours, img_contour = contour_shape(card)
-        show_wait("cont", img_contour, 0)
-        print(filename)
-        print(get_mean(card.img, contours))
+        # contours, img_contour = contour_shape(card)
+        # show_wait("cont", img_contour, 0)
+        print(filename[2])
+        # print(get_mean(card.img, contours))
+        print(match_fill(card))
+        print("*******")
 
 run()
 
