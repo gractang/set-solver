@@ -252,7 +252,7 @@ def load_shapes(dir_in):
     return shapes
 
 
-# takes in input image & shapes list
+# takes in input image & shapes1 list
 # returns list of isolated images,
 # the names of those images (in id form),
 # and the drawn-over image

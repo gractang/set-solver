@@ -63,8 +63,8 @@ def get_vals(dict):
 
 
 def run():
-    img = cv2.imread("test/IMG_3886.jpg")
-    shapes = util.load_shapes("test/shapes")
+    img = cv2.imread("test/IMG_3893.jpg")
+    shapes = util.load_shapes("test/shapes1")
     cards_imgs, img_contour = util.isolate_cards(img)
     util.show_wait("contours", img_contour, 0)
     cards = {}

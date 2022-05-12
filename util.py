@@ -38,6 +38,9 @@ VALS_DICT = {0:RED_VALS, 1:GREEN_VALS, 2:PURPLE_VALS}
 
 WAIT_TIME = 3000
 
+EMPTY_MAX = 50
+STRIPED_MAX = 180
+
 
 # card class to store name and image
 class Card:
@@ -276,7 +279,7 @@ def match_color(card):
 
 
 # returns shape id of given card object
-# shapes is actually a list of cards that have specific shape attributes
+# shapes1 is actually a list of cards that have specific shape attributes
 def match_shape(card, shapes):
     best_shape_match_diff = 100000
     best_shape_name = "tbd"
@@ -320,7 +323,7 @@ def load_shapes(dir_in):
     return shapes
 
 
-# only run once to generate the shapes to compare with
+# only run once to generate the shapes1 to compare with
 def generate_shapes(dir_in, dir_out):
     for filename in os.listdir(dir_in):
         print(os.path.join(dir_in + "/", filename))
@@ -365,19 +368,19 @@ def contour_shape(card):
     retval, img_bw = cv2.threshold(img_blur, thresh_level, 255, cv2.THRESH_BINARY_INV)
 
     img_canny = cv2.Canny(img_bw, CANNY_THRESH, CANNY_THRESH / 2)
-    img_dilated = cv2.dilate(img_canny, kernel=np.ones((5, 5), np.uint8), iterations=2)
+    img_dilated = cv2.dilate(img_canny, kernel=np.ones((3, 3), np.uint8), iterations=2)
 
-    contours, hierarchy = cv2.findContours(img_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(img_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
     img_stack = stack_images(1, ([img, img_gray, img_blur],
                                  [img_bw, img_contour, img_dilated]))
-    show_wait("stack", img_stack, 0)
+    # show_wait("stack", img_stack, 0)
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        print(area)
+
         if area > SHAPE_MIN_AREA:
-            # draw onto img_contour, all the contours, draw all (-1), draw in red (0,0,255), line thickness 5
-            cv2.drawContours(img_contour, cnt, -1, (0, 0, 255), 5)
+            # draw onto img_contour, all the contours, draw all (-1), draw in red (0,0,255), line thickness 2
+            cv2.drawContours(img_contour, cnt, -1, (0, 0, 255), 2)
             peri = cv2.arcLength(cnt, True)
 
             # make an approximation of the four corner points
@@ -385,19 +388,43 @@ def contour_shape(card):
 
             num_corners = len(approx)
             x, y, w, h = cv2.boundingRect(approx)
-            print('Width:', w)
-            print('Height:', w)
-            print('Box area:', w*h)
-            print('Fraction:', 1.0*area/(w*h))
-            cv2.rectangle(img_contour, (x, y), (x + w, y + h), (0, 255, 0), 3)
+            # print("Area: ", area)
+            # print('Width:', w)
+            # print('Height:', w)
+            # print('Box area:', w*h)
+            # print('Fraction:', 1.0*area/(w*h))
+            cv2.rectangle(img_contour, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-    show_wait("cont", img_contour, 0)
+    return contours, img_contour
+
+
+# gets the grayscale mean of the inside of one shape on the card
+def get_mean(img, contours):
+    if len(contours) < 1:
+        return "wrong"
+    c = contours[0]
+    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    bkg_level = img_gray[10][10]
+    thresh_level = bkg_level - 30
+    thresh, img_bw = cv2.threshold(img_gray, thresh_level, 255, cv2.THRESH_BINARY)
+    mask = np.zeros(img_bw.shape, np.uint8)
+    cv2.drawContours(mask, c, -1, 255, -1)
+    cv2.fillPoly(mask, pts=[c], color=(255, 255, 255))
+    masked = cv2.bitwise_and(img_bw, img_bw, mask=mask)
+    cv2.imshow("mask", mask)
+    cv2.imshow("masked img", masked)
+    cv2.waitKey(0)
+
+    mean = cv2.mean(img_bw, mask=mask)
+    gs_mean = mean[0]
+    return gs_mean
+
 
 
 # identifies cards
 def card_id():
     img = cv2.imread("test/IMG_0554.jpg")
-    shapes = load_shapes("test/shapes")
+    shapes = load_shapes("test/shapes1")
     cards_imgs, img_contour = isolate_cards(img)
     show_wait("contours", img_contour, 0)
     id_cards_imgs = []
@@ -413,7 +440,13 @@ def card_id():
 
 
 def run():
-    return
+    for filename in os.listdir("test/shapes_imgs"):
 
+        card = Card("", cv2.imread("test/shapes_imgs/" + filename))
+        contours, img_contour = contour_shape(card)
+        show_wait("cont", img_contour, 0)
+        print(filename)
+        print(get_mean(card.img, contours))
 
 run()
+
