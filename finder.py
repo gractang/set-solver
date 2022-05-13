@@ -10,7 +10,7 @@ import numpy as np
 def is_set(c1, c2, c3):
     # checks whether x is same or different
     # if mod 3 = 0, then python interprets as false. not --> turn to true
-    # n = num, c = color, f = fill, s = shape
+    # n = num, c = color, f = fill, s = shapes
     n_sd = not ((int(c1[0]) + int(c2[0]) + int(c3[0])) % 3)
     c_sd = not ((int(c1[1]) + int(c2[1]) + int(c3[1])) % 3)
     f_sd = not ((int(c1[2]) + int(c2[2]) + int(c3[2])) % 3)
@@ -63,8 +63,8 @@ def get_vals(dict):
 
 
 def run():
-    img = cv2.imread("test/IMG_3893.jpg")
-    shapes = util.load_shapes("test/shapes1")
+    img = cv2.imread("test/cases/IMG_3893.jpg")
+    shapes = util.load_shapes("test/shapes")
     cards_imgs, img_contour = util.isolate_cards(img)
     util.show_wait("contours", img_contour, 0)
     cards = {}
@@ -72,10 +72,9 @@ def run():
     id_cards_imgs = []
 
     for card_img in cards_imgs:
-        card = util.Card("", card_img)
-        print("best shape:")
-        card = util.match(card, shapes)
-        print("name:", card.name)
+        card = util.Card("", card_img, [])
+        cv2.waitKey(0)
+        util.match(card, shapes)
         cv2.putText(card.img, util.name_from_id(card.name), (10, 100), cv2.FONT_HERSHEY_SIMPLEX, util.FONT_SIZE,
                     (0, 0, 0), 1)
         cards[card.name] = card.img
@@ -88,6 +87,18 @@ def run():
     print(sets)
     print(convert_sets(sets))
     draw_sets(cards, sets)
+
+    # img = cv2.imread("test/cases/IMG_3886.jpg")
+    # shapes = util.load_shapes("test/shapes")
+    # card_imgs, img_contour = util.isolate_cards(img)
+    # names = []
+    # for card_img in card_imgs:
+    #     card = util.Card("", card_img, [])
+    #     name = util.match(card, shapes)
+    #     names.append(name)
+    #
+    # sets = solve(names)
+    # draw_sets(card_imgs, sets)
 
 
 if __name__ == '__main__':

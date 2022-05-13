@@ -3,7 +3,7 @@ import os
 import cv2
 import numpy as np
 
-# assigns values for each number, color, fill, and shape
+# assigns values for each number, color, fill, and shapes
 NUM_DICT = {0: "1", 1: "2", 2: "3"}
 COLOR_DICT = {0: "red", 1: "green", 2: "purple"}
 FILL_DICT = {0: "solid", 1: "empty", 2: "striped"}
@@ -17,7 +17,11 @@ THRESH_C = 70
 CARD_MAX_AREA = 120000
 CARD_MIN_AREA = 5000
 
-SHAPE_MIN_AREA = 5000
+SHAPE_MIN_AREA = 6000
+SHAPE_MAX_AREA = 14000
+
+SHAPE_WIDTH = 160
+SHAPE_HEIGHT = 80
 
 # width and height for card to be scaled to
 # actual card dimensions: 2.25 x 3.5 in
@@ -44,13 +48,11 @@ STRIPED_MAX = 180
 
 # card class to store name and image
 class Card:
-    def __init__(self):
-        self.name = []
-        self.img = []
 
-    def __init__(self, name_in, img_in):
+    def __init__(self, name_in, img_in, contours_in):
         self.name = name_in
         self.img = img_in
+        self.contours = contours_in
 
 
 # shows image for time (ms)
@@ -196,8 +198,8 @@ def isolate_cards(img):
 
             num_corners = len(approx)
             x, y, w, h = cv2.boundingRect(approx)
-            print(w)
-            print(h)
+            # print(w)
+            # print(h)
             if num_corners == 4:
                 # do card identification & warping
                 width, height = CARD_WIDTH, CARD_HEIGHT
@@ -278,94 +280,90 @@ def match_color(card):
     return color
 
 
-# returns shape id of given card object
-# shapes1 is actually a list of cards that have specific shape attributes
+# # returns shapes id of given card object
+# # shapes is actually a list of cards that have specific shapes attributes
+# def match_shape(card, shapes):
+#     best_shape_match_diff = 100000
+#     best_shape_name = "tbd"
+#     name = "placeholder"
+#     if len(card.img) != 0:
+#         # Difference the query card shapes from each shapes image; store the result with the least difference
+#         for shapes in shapes:
+#             img_gray = cv2.cvtColor(card.img, cv2.COLOR_BGR2GRAY)
+#             # img_blur = cv2.GaussianBlur(img_gray, (5, 5), 2)
+#             bkg_level = img_gray[10][10]
+#             thresh_level = bkg_level-30
+#             retval, img_bw = cv2.threshold(img_gray, thresh_level, 255, cv2.THRESH_BINARY)
+#
+#             # rms = remove_shadow(card.img)
+#             # rms_gray = cv2.cvtColor(rms, cv2.COLOR_BGR2GRAY)
+#             # retval, rms_bw = cv2.threshold(rms_gray, rms_gray[10][10] - 30, 255, cv2.THRESH_BINARY)
+#
+#             # show_wait("cycle", img_bw, 25)
+#             diff_img = cv2.absdiff(img_bw, shapes.img)
+#             # diff_img = cv2.absdiff(rms_bw, shapes.img)
+#             shape_diff = int(np.sum(diff_img) / 255)
+#             if shape_diff < best_shape_match_diff:
+#                 best_shape_match_diff = shape_diff
+#                 best_shape_name = shapes.name
+#                 # cv2.imshow("best", shapes.img)
+#                 # cv2.imshow("card", rms_bw)
+#                 # cv2.waitKey(0)
+#
+#     return best_shape_name
+
+
 def match_shape(card, shapes):
-    best_shape_match_diff = 100000
-    best_shape_name = "tbd"
-    name = "placeholder"
-    if len(card.img) != 0:
-        # Difference the query card shape from each shape image; store the result with the least difference
-        for shape in shapes:
-            img_gray = cv2.cvtColor(card.img, cv2.COLOR_BGR2GRAY)
-            # img_blur = cv2.GaussianBlur(img_gray, (5, 5), 2)
-            bkg_level = img_gray[10][10]
-            thresh_level = bkg_level-30
-            retval, img_bw = cv2.threshold(img_gray, thresh_level, 255, cv2.THRESH_BINARY)
+    if len(card.contours) < 1:
+        return "wrong"
+    c = card.contours[0]
+    img_gray = cv2.cvtColor(card.img, cv2.COLOR_BGR2GRAY)
+    bkg_level = img_gray[10][10]
+    thresh_level = bkg_level - 30
+    thresh, img_bw = cv2.threshold(img_gray, thresh_level, 255, cv2.THRESH_BINARY)
+    mask = np.zeros(img_bw.shape, np.uint8)
+    cv2.drawContours(mask, c, -1, 255, -1)
+    cv2.fillPoly(mask, pts=[c], color=255)
 
-            # rms = remove_shadow(card.img)
-            # rms_gray = cv2.cvtColor(rms, cv2.COLOR_BGR2GRAY)
-            # retval, rms_bw = cv2.threshold(rms_gray, rms_gray[10][10] - 30, 255, cv2.THRESH_BINARY)
+    peri = cv2.arcLength(c, True)
 
-            # show_wait("cycle", img_bw, 25)
-            diff_img = cv2.absdiff(img_bw, shape.img)
-            # diff_img = cv2.absdiff(rms_bw, shape.img)
-            shape_diff = int(np.sum(diff_img) / 255)
-            if shape_diff < best_shape_match_diff:
-                best_shape_match_diff = shape_diff
-                best_shape_name = shape.name
-                # cv2.imshow("best", shape.img)
-                # cv2.imshow("card", rms_bw)
-                # cv2.waitKey(0)
+    # make an approximation of the four corner points
+    approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+
+    x, y, w, h = cv2.boundingRect(approx)
+    cropped_img = mask[y:y + h, x:x + w]
+    cropped_resize = cv2.resize(cropped_img, (SHAPE_WIDTH, SHAPE_HEIGHT))
+
+    retval, img_bw = cv2.threshold(cropped_resize, 127, 255, cv2.THRESH_BINARY_INV)
+    cv2.imshow("inv", img_bw)
+
+    best_shape_name = "_"
+    best_shape_match_diff = 1000000
+    for shape in shapes:
+        img = shape[1]
+        shape_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        thresh, shape_bw = cv2.threshold(shape_gray, 127, 255, cv2.THRESH_BINARY)
+        # cv2.imshow("shape", shape_bw)
+        diff_img = cv2.absdiff(img_bw, shape_bw)
+        # cv2.imshow("sjfakl", diff_img)
+        # cv2.waitKey(0)
+
+        shape_diff = int(np.sum(diff_img) / 255)
+        if shape_diff < best_shape_match_diff:
+            best_shape_match_diff = shape_diff
+            best_shape_name = shape[0]
 
     return best_shape_name
 
 
-# loads shape into array of Shape objects
-def load_shapes(dir_in):
-    shapes = []
-    for filename in os.listdir(dir_in):
-        # print(os.path.join(DIRECTORY + "/", filename))
-        img = cv2.imread(dir_in + "/" + filename)
-        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        shapes.append(Card(filename[:4], img_gray))
-        print(filename[:4])
-    return shapes
-
-
-# only run once to generate the shapes1 to compare with
-def generate_shapes(dir_in, dir_out):
-    for filename in os.listdir(dir_in):
-        print(os.path.join(dir_in + "/", filename))
-        img = cv2.imread(dir_in + "/" + filename)
-        # iso_card_img = isolate_cards(img)[0][0]
-        # cv2.imshow("jsklf", iso_card_img)
-        # cv2.waitKey(10)
-        #img_gray = cv2.cvtColor(iso_card_img, cv2.COLOR_BGR2GRAY)
-        rms = remove_shadow(img)
-        img_gray = cv2.cvtColor(rms, cv2.COLOR_BGR2GRAY)
-        retval, img_bw = cv2.threshold(img_gray, img_gray[10][10]-30, 255, cv2.THRESH_BINARY)
-        show_wait("stack", np.hstack([img_gray, img_bw]), 10)
-        cv2.imwrite(dir_out + "/" + filename, img_bw)
-
-
-# also only runs once— crops every image in dir_in to just be
-# one single card
-def crop_imgs(dir_in):
-    for filename in os.listdir(dir_in):
-        img = cv2.imread(dir_in + "/" + filename)
-        cards_imgs, img_contour = isolate_cards(img)
-        cv2.imwrite(dir_in + "/" + filename, cards_imgs[0])
-
-
-# combines matching shape and color
-# returns the card with the name corrected
-def match(card, shapes):
-    color = match_color(card)
-    fill = match_fill(card)
-    shape = match_shape(card, shapes)
-    card.name = shape[0] + str(color) + str(fill) + shape[3]
-    return card
-
-
-# retrieves the contours inside the card
+# retrieves the contours inside the card, adds to card.contours
 def contour_shape(card):
     img = card.img
     img_contour = img.copy()
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_blur = cv2.GaussianBlur(img_gray, (3, 3), 3)
     # bkg_level = img_blur[int(15)][int(15)]
-    thresh_level = 127
+    thresh_level = img_gray[5][5]-30
     retval, img_bw = cv2.threshold(img_blur, thresh_level, 255, cv2.THRESH_BINARY_INV)
 
     img_canny = cv2.Canny(img_bw, CANNY_THRESH, CANNY_THRESH / 2)
@@ -378,8 +376,7 @@ def contour_shape(card):
     # show_wait("stack", img_stack, 0)
     for cnt in contours:
         area = cv2.contourArea(cnt)
-
-        if area > SHAPE_MIN_AREA:
+        if SHAPE_MIN_AREA < area < SHAPE_MAX_AREA:
             # draw onto img_contour, all the contours, draw all (-1), draw in red (0,0,255), line thickness 2
             cv2.drawContours(img_contour, cnt, -1, (0, 0, 255), 2)
             peri = cv2.arcLength(cnt, True)
@@ -395,13 +392,15 @@ def contour_shape(card):
             # print('Box area:', w*h)
             # print('Fraction:', 1.0*area/(w*h))
             cv2.rectangle(img_contour, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            card.contours.append(cnt)
 
-    return contours, img_contour
+    return img_contour
 
 
-# gets the grayscale mean of the inside of one shape on the card
+# gets the grayscale mean of the inside of one shapes on the card
 def get_mean(img, contours):
     if len(contours) < 1:
+        print(len(contours))
         return "wrong"
     c = contours[0]
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -412,9 +411,9 @@ def get_mean(img, contours):
     cv2.drawContours(mask, c, -1, 255, -1)
     cv2.fillPoly(mask, pts=[c], color=(255, 255, 255))
     masked = cv2.bitwise_and(img_bw, img_bw, mask=mask)
-    cv2.imshow("mask", mask)
-    cv2.imshow("masked img", masked)
-    cv2.waitKey(0)
+    # cv2.imshow("mask", mask)
+    # cv2.imshow("masked img", masked)
+    # cv2.waitKey(0)
 
     mean = cv2.mean(img_bw, mask=mask)
     gs_mean = mean[0]
@@ -423,14 +422,94 @@ def get_mean(img, contours):
 
 # matches the fill of the card where 0=filled, 1=empty, 2=striped
 def match_fill(card):
-    contours, img_contour = contour_shape(card)
-    mean = get_mean(card.img, contours)
+    mean = get_mean(card.img, card.contours)
+    print(mean)
     if mean > STRIPED_MAX:
         return 1
-    elif  mean > EMPTY_MAX:
+    elif mean > EMPTY_MAX:
         return 2
     else:
         return 0
+
+
+# the number of contours in the card is just the number of shapes
+def match_number(card):
+    # subtract 1 because 0:1, 1:2, etc. in dictionary
+    return len(card.contours)-1
+
+
+# loads shapes into array of Shape objects
+def load_shapes(dir_in):
+    shapes = []
+    for filename in os.listdir(dir_in):
+        # print(os.path.join(DIRECTORY + "/", filename))
+        img = cv2.imread(dir_in + "/" + filename)
+        shapes.append((filename[0], img))
+    return shapes
+
+
+# # only run once to generate the shapes1 to compare with
+# def generate_shapes(dir_in, dir_out):
+#     for filename in os.listdir(dir_in):
+#         print(os.path.join(dir_in + "/", filename))
+#         img = cv2.imread(dir_in + "/" + filename)
+#         # iso_card_img = isolate_cards(img)[0][0]
+#         # cv2.imshow("jsklf", iso_card_img)
+#         # cv2.waitKey(10)
+#         #img_gray = cv2.cvtColor(iso_card_img, cv2.COLOR_BGR2GRAY)
+#         rms = remove_shadow(img)
+#         img_gray = cv2.cvtColor(rms, cv2.COLOR_BGR2GRAY)
+#         retval, img_bw = cv2.threshold(img_gray, img_gray[10][10]-30, 255, cv2.THRESH_BINARY)
+#         show_wait("stack", np.hstack([img_gray, img_bw]), 10)
+#         cv2.imwrite(dir_out + "/" + filename, img_bw)
+
+
+# run only once: generates a cropped version of just the shape from img, writes to dir_out
+def generate_shapes(name, img, dir_out):
+    card = Card("", img, [])
+    contour_shape(card)
+    if len(card.contours) < 1:
+        return "wrong"
+    c = card.contours[0]
+    peri = cv2.arcLength(c, True)
+
+    # make an approximation of the four corner points
+    approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+
+    x, y, w, h = cv2.boundingRect(approx)
+    cropped_img = img[y:y+h, x:x+w]
+    cv2.imshow("cropped", cropped_img)
+
+    img_gray = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
+    bkg_level = img_gray[5][5]
+    thresh_level = bkg_level - 30
+    thresh, img_bw = cv2.threshold(img_gray, thresh_level, 255, cv2.THRESH_BINARY)
+
+    cv2.imshow("bw", img_bw)
+    cv2.waitKey(0)
+    cv2.imwrite(dir_out + '/' + name + ".JPG", img_bw)
+
+
+# also only runs once— crops every image in dir_in to just be
+# one single card
+def crop_imgs(dir_in):
+    for filename in os.listdir(dir_in):
+        img = cv2.imread(dir_in + "/" + filename)
+        cards_imgs, img_contour = isolate_cards(img)
+        cv2.imwrite(dir_in + "/" + filename, cards_imgs[0])
+
+
+# combines matching shapes and color
+# returns the card with the name corrected
+def match(card, shapes):
+    img_contour = contour_shape(card)
+    # show_wait("contours", img_contour, 0)
+    number = match_number(card)
+    color = match_color(card)
+    fill = match_fill(card)
+    shape = match_shape(card, shapes)
+    card.name = str(number) + str(color) + str(fill) + shape
+    return name_from_id(card.name)
 
 
 # identifies cards
@@ -442,7 +521,7 @@ def card_id():
     id_cards_imgs = []
     for card_img in cards_imgs:
         card = Card("", card_img)
-        print("best shape:")
+        print("best shapes:")
         card = match(card, shapes)
         print("name:", card.name)
         cv2.putText(card.img, name_from_id(card.name), (10, 100), cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE,
@@ -452,15 +531,27 @@ def card_id():
 
 
 def run():
-    for filename in os.listdir("test/shapes_imgs"):
+    # for filename in os.listdir("test/shapes_imgs"):
+    #
+    #     card = Card("", cv2.imread("test/shapes_imgs/" + filename), [])
+    #     contour_shape(card)
+    #     # contours, img_contour = contour_shape(card)
+    #     # show_wait("cont", img_contour, 0)
+    #     print(name_from_id(filename[0] + "0" + filename[2:4]))
+    #     # print(get_mean(card.img, contours))
+    #
+    #     print("fill: ", match_fill(card))
+    #     print("number: ", len(card.contours))
+    #     print("*******")
 
-        card = Card("", cv2.imread("test/shapes_imgs/" + filename))
-        # contours, img_contour = contour_shape(card)
-        # show_wait("cont", img_contour, 0)
-        print(filename[2])
-        # print(get_mean(card.img, contours))
-        print(match_fill(card))
-        print("*******")
+    return
+    # card = Card("", cv2.imread("test/shapes_imgs/2_02.JPG"), [])
+    # shapes = load_shapes("test/shapes")
+    # name = match(card, shapes)
+    # print(name)
+    # show_wait(name, card.img, 0)
+
+
 
 run()
 

@@ -5,11 +5,11 @@ import os
 
 WAIT_TIME = 5000
 
-# all possible shape formats
+# all possible shapes formats
 SHAPES = ["0__0", "0__1", "0__2", "1__0", "1__1", "1__2", "2__0", "2__1", "2__2"]
 IMG_TYPE = "jpg"
 
-# assigns values for each number, color, fill, and shape
+# assigns values for each number, color, fill, and shapes
 NUM_DICT = {0: "1", 1: "2", 2: "3"}
 COLOR_DICT = {0: "red", 1: "green", 2: "purple"}
 FILL_DICT = {0: "solid", 1: "empty", 2: "striped"}
@@ -41,14 +41,14 @@ PURPLE_VALS = [90, 179, 12, 255, 82, 255]
 VALS_DICT = {0:RED_VALS, 1:GREEN_VALS, 2:PURPLE_VALS}
 
 
-# idk why i did this. this is the same as the shape class lol
+# idk why i did this. this is the same as the shapes class lol
 class Card:
     def __init__(self):
         self.name = []
         self.img = []
 
 
-# really just a class to represent the shape images
+# really just a class to represent the shapes images
 class Shape:
     def __init__(self):
         self.img = []
@@ -215,10 +215,10 @@ def match(card, shapes):
     best_shape_name = "tbd"
     name = "placeholder"
     if len(card.img) != 0:
-        # Difference the query card shape from each shape image; store the result with the least difference
+        # Difference the query card shapes from each shapes image; store the result with the least difference
         for shape in shapes:
-            # print(len(card.img.shape))
-            # print(len(shape.img.shape))
+            # print(len(card.img.shapes))
+            # print(len(shapes.img.shapes))
             img_gray = cv2.cvtColor(card.img, cv2.COLOR_BGR2GRAY)
             img_blur = cv2.GaussianBlur(img_gray, (17, 17), 5)
             bkg_level = img_gray[10][10]
@@ -240,7 +240,7 @@ def match(card, shapes):
     return name
 
 
-# loads shape into array of Shape objects
+# loads shapes into array of Shape objects
 def load_shapes(dir_in):
     shapes = []
     for filename in os.listdir(dir_in):

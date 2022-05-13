@@ -169,10 +169,10 @@ def match(card, shapes):
     best_shape_name = "tbd"
     name = "placeholder"
     if len(card.img) != 0:
-        # Difference the query card shape from each shape image; store the result with the least difference
+        # Difference the query card shapes from each shapes image; store the result with the least difference
         for shape in shapes:
-            # print(len(card.img.shape))
-            # print(len(shape.img.shape))
+            # print(len(card.img.shapes))
+            # print(len(shapes.img.shapes))
             img_gray = cv2.cvtColor(card.img, cv2.COLOR_BGR2GRAY)
             img_blur = cv2.GaussianBlur(img_gray, (17, 17), 5)
             bkg_level = img_gray[10][10]
@@ -221,7 +221,7 @@ def process(gs=True):
 
 
 def run():
-    shapes = ref.load_shapes("shape/")
+    shapes = ref.load_shapes("shapes/")
     path = "test/IMG_0548.JPG"
     image = cv2.imread(path)
     #image = cv2.imread("shadows_out.jpg")
