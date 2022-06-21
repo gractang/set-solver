@@ -63,17 +63,17 @@ def get_vals(dict):
 
 
 def run():
-    img = cv2.imread("test/cases/IMG_3893.jpg")
+    img = cv2.imread("test/cases/Test_1.jpg")
     shapes = util.load_shapes("test/shapes")
     cards_imgs, img_contour = util.isolate_cards(img)
-    util.show_wait("contours", img_contour, 0)
+
     cards = {}
     names = []
     id_cards_imgs = []
-
+    util.show_wait("contours", img_contour, 0)
     for card_img in cards_imgs:
         card = util.Card("", card_img, [])
-        cv2.waitKey(0)
+        # cv2.waitKey(0)
         util.match(card, shapes)
         cv2.putText(card.img, util.name_from_id(card.name), (10, 100), cv2.FONT_HERSHEY_SIMPLEX, util.FONT_SIZE,
                     (0, 0, 0), 1)
@@ -81,24 +81,12 @@ def run():
         names.append(card.name)
         id_cards_imgs.append(card.img)
 
-    util.show_wait("identified cards", np.hstack(id_cards_imgs), 0)
+    # util.show_wait("identified cards", np.hstack(id_cards_imgs), 0)
 
     sets = solve(names)
     print(sets)
     print(convert_sets(sets))
     draw_sets(cards, sets)
-
-    # img = cv2.imread("test/cases/IMG_3886.jpg")
-    # shapes = util.load_shapes("test/shapes")
-    # card_imgs, img_contour = util.isolate_cards(img)
-    # names = []
-    # for card_img in card_imgs:
-    #     card = util.Card("", card_img, [])
-    #     name = util.match(card, shapes)
-    #     names.append(name)
-    #
-    # sets = solve(names)
-    # draw_sets(card_imgs, sets)
 
 
 if __name__ == '__main__':

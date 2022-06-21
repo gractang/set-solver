@@ -35,9 +35,9 @@ FONT_SIZE = 0.5
 DEFAULT_FILL = 0
 
 # range values for red, green, and purple as determined by hand using color.py
-RED_VALS = [0, 49, 64, 255, 212, 255]
-GREEN_VALS = [50, 89, 70, 255, 56, 255]
-PURPLE_VALS = [90, 179, 12, 255, 82, 255]
+RED_VALS = [0, 49, 64, 255, 50, 255]
+GREEN_VALS = [50, 89, 1, 255, 56, 255]
+PURPLE_VALS = [90, 179, 12, 255, 50, 255]
 VALS_DICT = {0:RED_VALS, 1:GREEN_VALS, 2:PURPLE_VALS}
 
 WAIT_TIME = 3000
@@ -335,7 +335,7 @@ def match_shape(card, shapes):
     cropped_resize = cv2.resize(cropped_img, (SHAPE_WIDTH, SHAPE_HEIGHT))
 
     retval, img_bw = cv2.threshold(cropped_resize, 127, 255, cv2.THRESH_BINARY_INV)
-    cv2.imshow("inv", img_bw)
+    # cv2.imshow("inv", img_bw)
 
     best_shape_name = "_"
     best_shape_match_diff = 1000000
@@ -363,7 +363,7 @@ def contour_shape(card):
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_blur = cv2.GaussianBlur(img_gray, (3, 3), 3)
     # bkg_level = img_blur[int(15)][int(15)]
-    thresh_level = img_gray[5][5]-30
+    thresh_level = img_gray[220][220]-30
     retval, img_bw = cv2.threshold(img_blur, thresh_level, 255, cv2.THRESH_BINARY_INV)
 
     img_canny = cv2.Canny(img_bw, CANNY_THRESH, CANNY_THRESH / 2)
@@ -400,7 +400,7 @@ def contour_shape(card):
 # gets the grayscale mean of the inside of one shapes on the card
 def get_mean(img, contours):
     if len(contours) < 1:
-        print(len(contours))
+        # print(len(contours))
         return "wrong"
     c = contours[0]
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -423,7 +423,6 @@ def get_mean(img, contours):
 # matches the fill of the card where 0=filled, 1=empty, 2=striped
 def match_fill(card):
     mean = get_mean(card.img, card.contours)
-    print(mean)
     if mean > STRIPED_MAX:
         return 1
     elif mean > EMPTY_MAX:
@@ -485,8 +484,8 @@ def generate_shapes(name, img, dir_out):
     thresh_level = bkg_level - 30
     thresh, img_bw = cv2.threshold(img_gray, thresh_level, 255, cv2.THRESH_BINARY)
 
-    cv2.imshow("bw", img_bw)
-    cv2.waitKey(0)
+    # cv2.imshow("bw", img_bw)
+    # cv2.waitKey(0)
     cv2.imwrite(dir_out + '/' + name + ".JPG", img_bw)
 
 
@@ -510,24 +509,6 @@ def match(card, shapes):
     shape = match_shape(card, shapes)
     card.name = str(number) + str(color) + str(fill) + shape
     return name_from_id(card.name)
-
-
-# identifies cards
-def card_id():
-    img = cv2.imread("test/IMG_0554.jpg")
-    shapes = load_shapes("test/shapes1")
-    cards_imgs, img_contour = isolate_cards(img)
-    show_wait("contours", img_contour, 0)
-    id_cards_imgs = []
-    for card_img in cards_imgs:
-        card = Card("", card_img)
-        print("best shapes:")
-        card = match(card, shapes)
-        print("name:", card.name)
-        cv2.putText(card.img, name_from_id(card.name), (10, 100), cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE,
-                    (0, 0, 0), 1)
-        id_cards_imgs.append(card.img)
-    show_wait("identified cards", np.hstack(id_cards_imgs), 0)
 
 
 def run():
